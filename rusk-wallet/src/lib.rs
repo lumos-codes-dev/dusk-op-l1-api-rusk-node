@@ -29,7 +29,7 @@ pub mod dat;
 pub mod gas;
 
 pub use error::Error;
-pub use gql::{BlockTransaction, GraphQL};
+pub use gql::{BlockData, BlockTransaction, GraphQL};
 pub use rues::HttpClient as RuesHttpClient;
 pub use wallet::{
     Address, DecodedNote, Profile, SecureWalletFile, Wallet, WalletPath,
@@ -58,7 +58,7 @@ const DEFAULT_MAX_PROFILES: usize = 2;
 
 // # Panics
 // The function is const and will panic during compilation if the value is
-// invalid or larger that 255.
+// invalid
 const fn get_max_profiles() -> usize {
     match option_env!("WALLET_MAX_PROFILES") {
         Some(v) => match konst::primitive::parse_usize(v) {
