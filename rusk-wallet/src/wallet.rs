@@ -11,6 +11,7 @@ mod transaction;
 pub use address::{Address, Profile};
 #[allow(clippy::module_name_repetitions)]
 pub use file::{Secure as SecureWalletFile, WalletPath};
+use phoenix_core::StealthAddress;
 
 use std::fmt::Debug;
 use std::fs;
