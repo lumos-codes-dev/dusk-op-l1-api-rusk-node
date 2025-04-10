@@ -11,7 +11,6 @@ mod transaction;
 pub use address::{Address, Profile};
 #[allow(clippy::module_name_repetitions)]
 pub use file::{Secure as SecureWalletFile, WalletPath};
-use phoenix_core::StealthAddress;
 
 use std::fmt::Debug;
 use std::fs;
@@ -26,7 +25,7 @@ use dusk_core::signatures::bls::{
 use dusk_core::stake::StakeData;
 use dusk_core::transfer::phoenix::{
     Note, NoteLeaf, PublicKey as PhoenixPublicKey,
-    SecretKey as PhoenixSecretKey, ViewKey as PhoenixViewKey,
+    SecretKey as PhoenixSecretKey, StealthAddress, ViewKey as PhoenixViewKey,
 };
 use dusk_core::BlsScalar;
 use wallet_core::prelude::keys::{
