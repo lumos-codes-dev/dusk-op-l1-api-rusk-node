@@ -212,10 +212,7 @@ type Iv = [u8; IV_SIZE];
 pub(crate) async fn load_wallet(
     wallet_path: &WalletPath,
     settings: &Settings,
-    file_version_and_salt_iv: Result<
-        (FileVersion, Option<(Salt, Iv)>),
-        Error,
-    >,
+    file_version_and_salt_iv: Result<(FileVersion, Option<(Salt, Iv)>), Error>,
 ) -> anyhow::Result<Wallet<WalletFile>> {
     let wallet_found =
         wallet_path.inner().exists().then(|| wallet_path.clone());
@@ -259,7 +256,9 @@ pub(crate) async fn load_wallet(
             &wallet_path,
             &Prompter,
         )?,
-        MainMenu::Recover => Command::run_restore_from_seed(wallet_path, &Prompter)?,
+        MainMenu::Recover => {
+            Command::run_restore_from_seed(wallet_path, &Prompter)?
+        }
         MainMenu::Exit => std::process::exit(0),
     };
 
