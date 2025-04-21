@@ -36,15 +36,7 @@ use sha2::{Digest, Sha256};
 
 pub(crate) trait Prompt {
     /// Prompt the user to enter a password
-    fn create_new_password(&self) -> InquireResult<String>;
-
-    fn prompt_text(&self, msg: &str) -> InquireResult<String>;
-}
-
-pub(crate) struct Prompter;
-
-impl Prompt for Prompter {
-    fn create_new_password(&self) -> Result<String, InquireError> {
+    fn create_new_password(&self) -> InquireResult<String> {
         create_new_password()
     }
 
@@ -52,6 +44,10 @@ impl Prompt for Prompter {
         Text::new(msg).prompt()
     }
 }
+
+pub(crate) struct Prompter;
+
+impl Prompt for Prompter {}
 
 pub(crate) fn ask_pwd(msg: &str) -> Result<String, InquireError> {
     let pwd = Password::new(msg)
