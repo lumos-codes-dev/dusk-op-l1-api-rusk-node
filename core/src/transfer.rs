@@ -27,6 +27,7 @@ use crate::signatures::bls::{
 };
 use crate::{BlsScalar, Error};
 
+use self::blob::Transaction as BlobTransaction;
 use self::data::{ContractCall, ContractDeploy, TransactionData};
 use self::moonlight::Transaction as MoonlightTransaction;
 use self::phoenix::{
@@ -36,6 +37,7 @@ use self::phoenix::{
 };
 use self::withdraw::{Withdraw, WithdrawReceiver};
 
+pub mod blob;
 pub mod data;
 pub mod moonlight;
 pub mod phoenix;
@@ -49,6 +51,8 @@ pub const PANIC_NONCE_NOT_READY: &str = "Nonce not ready to be used yet";
 
 /// Topic for the moonlight transaction event.
 pub const MOONLIGHT_TOPIC: &str = "moonlight";
+/// Topic for the blob transaction event.
+pub const BLOB_TOPIC: &str = "blob";
 /// Topic for the phoenix transaction event.
 pub const PHOENIX_TOPIC: &str = "phoenix";
 /// Topic for the contract to contract transaction event.
@@ -75,6 +79,8 @@ pub enum Transaction {
     Phoenix(PhoenixTransaction),
     /// A moonlight transaction.
     Moonlight(MoonlightTransaction),
+    /// A blob transaction.
+    Blob(BlobTransaction),
 }
 
 impl Transaction {
@@ -145,12 +151,57 @@ impl Transaction {
         )?))
     }
 
+    /// Create a new blob transaction.
+    ///
+    /// # Errors
+    /// The creation of a transaction is not possible and will error if:
+    /// - the memo, if given, is too large
+    #[allow(clippy::too_many_arguments)]
+    pub fn blob(
+        sender_sk: &AccountSecretKey,
+        receiver: Option<AccountPublicKey>,
+        value: u64,
+        deposit: u64,
+        gas_limit: u64,
+        gas_price: u64,
+        nonce: u64,
+        chain_id: u8,
+        data: Option<impl Into<TransactionData>>,
+        blob_fee_cap: u64,
+        blob_hashes: Vec<[u8; 32]>,
+    ) -> Result<Self, Error> {
+        Ok(Self::Blob(BlobTransaction::new(
+            sender_sk,
+            receiver,
+            value,
+            deposit,
+            gas_limit,
+            gas_price,
+            nonce,
+            chain_id,
+            data,
+            blob_fee_cap,
+            blob_hashes,
+        )?))
+    }
+
     /// Return the sender of the account for Moonlight transactions.
     #[must_use]
     pub fn moonlight_sender(&self) -> Option<&AccountPublicKey> {
         match self {
             Self::Phoenix(_) => None,
             Self::Moonlight(tx) => Some(tx.sender()),
+            Self::Blob(_) => None,
+        }
+    }
+
+    /// Return the sender of the transaction for Blob transactions.
+    #[must_use]
+    pub fn blob_sender(&self) -> Option<&AccountPublicKey> {
+        match self {
+            Self::Phoenix(_) => None,
+            Self::Moonlight(_) => None,
+            Self::Blob(tx) => Some(tx.sender()),
         }
     }
 
@@ -164,30 +215,53 @@ impl Transaction {
     /// - `None` if the transaction is a Moonlight transaction and the receiver
     ///   is the same as the sender.
     /// - `None` if the transaction is a Phoenix transaction.
+    /// - `None` if the transaction is a Blob transaction.
     #[must_use]
     pub fn moonlight_receiver(&self) -> Option<&AccountPublicKey> {
         match self {
             Self::Phoenix(_) => None,
             Self::Moonlight(tx) => tx.receiver(),
+            Self::Blob(_) => None,
         }
     }
 
-    /// Return the value transferred in a Moonlight transaction.
+    /// Get the receiver of the transaction for Blob transactions, if it
+    /// exists.
+    ///
+    /// # Returns
+    /// - `Some(&AccountPublicKey)` if the transaction is a Blob transaction and
+    ///   the receiver is different from the sender.
+    /// - `None` if the transaction is a Blob transaction and the receiver is
+    ///   the same as the sender.
+    /// - `None` if the transaction is a Phoenix transaction.
+    /// - `None` if the transaction is a Moonlight transaction.
+    #[must_use]
+    pub fn blob_receiver(&self) -> Option<&AccountPublicKey> {
+        match self {
+            Self::Phoenix(_) => None,
+            Self::Moonlight(_) => None,
+            Self::Blob(tx) => tx.receiver(),
+        }
+    }
+
+    /// Return the value transferred in a Moonlight and Blob transaction.
     #[must_use]
     pub fn value(&self) -> Option<u64> {
         match self {
             Self::Phoenix(_) => None,
             Self::Moonlight(tx) => Some(tx.value()),
+            Self::Blob(tx) => Some(tx.value()),
         }
     }
 
     /// Returns the nullifiers of the transaction, if the transaction is a
-    /// moonlight transaction, the result will be empty.
+    /// moonlight or blob transaction, the result will be empty.
     #[must_use]
     pub fn nullifiers(&self) -> &[BlsScalar] {
         match self {
             Self::Phoenix(tx) => tx.nullifiers(),
             Self::Moonlight(_) => &[],
+            Self::Blob(_) => &[],
         }
     }
 
@@ -197,6 +271,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => Some(tx.root()),
             Self::Moonlight(_) => None,
+            Self::Blob(_) => None,
         }
     }
 
@@ -206,6 +281,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => &tx.outputs()[..],
             Self::Moonlight(_) => &[],
+            Self::Blob(_) => &[],
         }
     }
 
@@ -215,6 +291,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => Some(tx.sender()),
             Self::Moonlight(_) => None,
+            Self::Blob(_) => None,
         }
     }
 
@@ -224,6 +301,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.deposit(),
             Self::Moonlight(tx) => tx.deposit(),
+            Self::Blob(tx) => tx.deposit(),
         }
     }
 
@@ -233,6 +311,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.gas_limit(),
             Self::Moonlight(tx) => tx.gas_limit(),
+            Self::Blob(tx) => tx.gas_limit(),
         }
     }
 
@@ -242,6 +321,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.gas_price(),
             Self::Moonlight(tx) => tx.gas_price(),
+            Self::Blob(tx) => tx.gas_price(),
         }
     }
 
@@ -253,6 +333,9 @@ impl Transaction {
             Self::Moonlight(tx) => {
                 RefundAddress::Moonlight(tx.refund_address())
             }
+            Self::Blob(tx) => RefundAddress::Blob(tx.refund_address()),
+            // TODO: Do we need an implementation for blob (new typr for
+            // RefundAddress)?
         }
     }
 
@@ -271,6 +354,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.call(),
             Self::Moonlight(tx) => tx.call(),
+            Self::Blob(tx) => tx.call(),
         }
     }
 
@@ -280,6 +364,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.deploy(),
             Self::Moonlight(tx) => tx.deploy(),
+            Self::Blob(tx) => tx.deploy(),
         }
     }
 
@@ -289,6 +374,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.memo(),
             Self::Moonlight(tx) => tx.memo(),
+            Self::Blob(tx) => tx.memo(),
         }
     }
 
@@ -303,6 +389,9 @@ impl Transaction {
             }
             Transaction::Moonlight(tx) => {
                 Transaction::Moonlight(tx.strip_off_bytecode()?)
+            }
+            Transaction::Blob(tx) => {
+                Transaction::Blob(tx.strip_off_bytecode()?)
             }
         })
     }
@@ -321,6 +410,10 @@ impl Transaction {
                 bytes.push(1);
                 bytes.extend(tx.to_var_bytes());
             }
+            Self::Blob(tx) => {
+                bytes.push(2);
+                bytes.extend(tx.to_var_bytes());
+            }
         }
 
         bytes
@@ -336,6 +429,7 @@ impl Transaction {
         Ok(match u8::from_reader(&mut buf)? {
             0 => Self::Phoenix(PhoenixTransaction::from_slice(buf)?),
             1 => Self::Moonlight(MoonlightTransaction::from_slice(buf)?),
+            2 => Self::Blob(BlobTransaction::from_slice(buf)?),
             _ => return Err(BytesError::InvalidData),
         })
     }
@@ -349,6 +443,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.to_hash_input_bytes(),
             Self::Moonlight(tx) => tx.to_hash_input_bytes(),
+            Self::Blob(tx) => tx.to_hash_input_bytes(),
         }
     }
 
@@ -358,6 +453,7 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.hash(),
             Self::Moonlight(tx) => tx.hash(),
+            Self::Blob(tx) => tx.hash(),
         }
     }
 
@@ -392,6 +488,12 @@ impl From<MoonlightTransaction> for Transaction {
     }
 }
 
+impl From<BlobTransaction> for Transaction {
+    fn from(tx: BlobTransaction) -> Self {
+        Self::Blob(tx)
+    }
+}
+
 /// Enum defining the address to refund unspent gas to for both Phoenix and
 /// Moonlight transactions.
 pub enum RefundAddress<'a> {
@@ -399,6 +501,8 @@ pub enum RefundAddress<'a> {
     Phoenix(&'a StealthAddress),
     /// The moonlight account to which to send the refund.
     Moonlight(&'a AccountPublicKey),
+    /// The moonlight contract to which to send the refund.
+    Blob(&'a AccountPublicKey),
 }
 
 /// The payload sent by a contract to the transfer contract to transfer some of

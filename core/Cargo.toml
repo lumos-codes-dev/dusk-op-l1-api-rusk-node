@@ -16,7 +16,7 @@ jubjub-schnorr = { workspace = true, features = ["rkyv-impl"] }
 phoenix-core = { workspace = true, features = ["rkyv-impl", "alloc"] }
 phoenix-circuits = { workspace = true }
 poseidon-merkle = { workspace = true, features = ["rkyv-impl"] }
-piecrust-uplink = { workspace = true }
+piecrust-uplink = { workspace = true, default-features = false, features = ["serde"] }
 dusk-bytes = { workspace = true }
 rkyv = { workspace = true,  features = ["size_32"] }
 bytecheck = { workspace = true }
