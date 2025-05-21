@@ -146,7 +146,7 @@ impl<N: Network, DB: database::DB, VM: vm::VMExecution>
                     if let Ok(msg) = msg {
                         match &msg.payload {
                             Payload::Transaction(tx) => {
-                                let accept = self.accept_tx(&db, &vm, tx);
+                                let accept = self.accept_tx(&db, &vm, tx); // @TODO: додавання транзакції до мемпулу
                                 if let Err(e) = accept.await {
                                     error!("Tx {} not accepted: {e}", hex::encode(tx.id()));
                                     continue;
@@ -182,10 +182,10 @@ impl MempoolSrv {
 
         let events =
             MempoolSrv::check_tx(db, vm, tx, false, max_mempool_txn_count)
-                .await?;
+                .await?; // @TODO: тут перевіряється транзакція
 
         tracing::info!(
-            event = "transaction accepted",
+            event = "transaction accepted", //@ TODO: тут прийнято транзакцію
             hash = hex::encode(tx.id())
         );
 
@@ -270,7 +270,7 @@ impl MempoolSrv {
             }
         })?;
 
-        // VM Preverify call
+        // VM Preverify call // @TODO: тут перевіряється транзакція
         let preverification_data =
             vm.read().await.preverify(tx).map_err(|e| {
                 TxAcceptanceError::VerificationFailed(format!("{e:?}"))
@@ -342,7 +342,7 @@ impl MempoolSrv {
     /// Requests full mempool data from N alive peers
     ///
     /// Message flow:
-    /// GetMempool -> Inv -> GetResource -> Tx
+    /// GetMempool -> Inv -> GetResource -> Tx // @TODO: тут 
     async fn request_mempool<N: Network>(&self, network: &Arc<RwLock<N>>) {
         const WAIT_TIMEOUT: Duration = Duration::from_secs(5);
         let max_peers = self

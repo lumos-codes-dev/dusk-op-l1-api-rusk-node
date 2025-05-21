@@ -157,7 +157,7 @@ impl RuskNode {
         Ok(ResponseData::new(DataType::None))
     }
 
-    async fn propagate_tx(&self, tx: &[u8]) -> anyhow::Result<ResponseData> {
+    async fn propagate_tx(&self, tx: &[u8]) -> anyhow::Result<ResponseData> { // @TODO: надходження транзакції до вузла
         let tx: Transaction = ProtocolTransaction::from_slice(tx)
             .map_err(|e| anyhow::anyhow!("Invalid Data {e:?}"))?
             .into();

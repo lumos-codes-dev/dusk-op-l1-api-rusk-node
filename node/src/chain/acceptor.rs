@@ -713,7 +713,7 @@ impl<DB: database::DB, VM: vm::VMExecution, N: Network> Acceptor<N, DB, VM> {
     }
 
     /// Return true if the accepted blocks triggered a rolling finality
-    pub(crate) async fn try_accept_block(
+    pub(crate) async fn try_accept_block( // @TODO: головний метод для повної валідації блоку
         &mut self,
         blk: &Block,
         enable_consensus: bool,

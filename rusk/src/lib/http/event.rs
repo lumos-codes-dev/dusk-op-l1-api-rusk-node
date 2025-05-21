@@ -156,7 +156,7 @@ impl Stream for BinaryOrTextStream {
 #[serde(untagged)]
 pub enum RequestData {
     Binary(BinaryWrapper),
-    Text(String),
+    Text(String), // @TODO: можливо тут потрібно додати тип даних який буде містити Sidecar
 }
 
 impl RequestData {
@@ -536,7 +536,7 @@ pub struct RuesEvent {
 pub struct RuesDispatchEvent {
     pub uri: RuesEventUri,
     pub headers: serde_json::Map<String, serde_json::Value>,
-    pub data: RequestData,
+    pub data: RequestData, // @TODO: тут дані транзакції і мабуть повинен бути Sidecar
 }
 
 impl RuesDispatchEvent {

@@ -4,7 +4,7 @@
 //
 // Copyright (c) DUSK NETWORK. All rights reserved.
 
-//! Types related to the blob transaction model of Dusk's transfer
+//! Types related to the moonlight transaction model of Dusk's transfer
 //! contract.
 
 #[cfg(feature = "serde")]
@@ -40,13 +40,12 @@ pub struct AccountData {
     pub balance: u64,
 }
 
-/// Blob transaction.
+/// Moonlight transaction.
 #[derive(Debug, Clone, PartialEq, Eq, Archive, Serialize, Deserialize)]
 #[archive_attr(derive(CheckBytes))]
 pub struct Transaction {
     payload: Payload,
     signature: AccountSignature,
-    sidecar: Option<BlobSidecar>,
 }
 
 impl Transaction {
@@ -66,8 +65,6 @@ impl Transaction {
         nonce: u64,
         chain_id: u8,
         data: Option<impl Into<TransactionData>>,
-        blob_fee_cap: u64,
-        blob_hashes: Vec<[u8; 32]>,
     ) -> Result<Self, Error> {
         let refund_address = AccountPublicKey::from(sender_sk);
 
@@ -82,8 +79,6 @@ impl Transaction {
             nonce,
             chain_id,
             data,
-            blob_fee_cap,
-            blob_hashes,
         )
     }
 
@@ -105,8 +100,6 @@ impl Transaction {
         nonce: u64,
         chain_id: u8,
         data: Option<impl Into<TransactionData>>,
-        blob_fee_cap: u64,
-        blob_hashes: Vec<[u8; 32]>,
     ) -> Result<Self, Error> {
         let data = data.map(Into::into);
         let sender = AccountPublicKey::from(sender_sk);
@@ -127,8 +120,6 @@ impl Transaction {
             fee,
             nonce,
             data,
-            blob_fee_cap,
-            blob_hashes,
         };
 
         Self::sign_payload(sender_sk, payload)
@@ -260,17 +251,6 @@ impl Transaction {
         self.payload.data.as_ref()
     }
 
-    /// Returns the blob fee cap of the transaction.
-    #[must_use]
-    pub fn blob_fee_cap(&self) -> u64 {
-        self.payload.blob_fee_cap
-    }
-
-    /// Returns the blob hashes of the transaction.
-    pub fn blob_hashes(&self) -> &Vec<[u8; 32]> {
-        &self.payload.blob_hashes
-    }
-
     /// Creates a modified clone of this transaction if it contains data for
     /// deployment, clones all fields except for the bytecode 'bytes' part.
     /// Returns none if the transaction is not a deployment transaction.
@@ -342,6 +322,12 @@ impl Transaction {
     pub fn to_hash_input_bytes(&self) -> Vec<u8> {
         let mut bytes = self.payload.signature_message();
         bytes.extend(self.signature.to_bytes());
+        if let Some(TransactionData::Blob(b)) = self.payload.data.as_ref() {
+            for blob in b {
+                bytes.extend(blob.hash);
+                bytes.extend(blob.commitment);
+            }
+        }
         bytes
     }
 
@@ -352,7 +338,7 @@ impl Transaction {
         self.payload.signature_message()
     }
 
-    /// Create the transaction hash.  // @TODO: check type of hash returned
+    /// Create the transaction hash.
     #[must_use]
     pub fn hash(&self) -> BlsScalar {
         BlsScalar::hash_to_scalar(&self.to_hash_input_bytes())
@@ -383,10 +369,6 @@ pub struct Payload {
     pub nonce: u64,
     /// Data to do a contract call, deployment, or insert a memo.
     pub data: Option<TransactionData>,
-    /// The fee cap for the blob transaction.
-    pub blob_fee_cap: u64,
-    /// The hashes of the blobs to be included in the transaction.
-    pub blob_hashes: Vec<[u8; 32]>,
 }
 
 impl Payload {
@@ -437,15 +419,14 @@ impl Payload {
                 bytes.extend((memo.len() as u64).to_bytes());
                 bytes.extend(memo);
             }
+            Some(TransactionData::Blob(blobs)) => {
+                bytes.push(4);
+                bytes.extend((memo.len() as u64).to_bytes());
+                for blob in blobs {
+                    bytes.extend(blob.to_var_bytes());
+                }
+            }
             _ => bytes.push(0),
-        }
-
-        bytes.extend(self.blob_fee_cap.to_bytes());
-
-        bytes.extend((self.blob_hashes.len() as u64).to_bytes());
-
-        for hash in &self.blob_hashes {
-            bytes.extend(hash);
         }
 
         bytes
@@ -512,20 +493,6 @@ impl Payload {
             }
         };
 
-        let blob_fee_cap = u64::from_reader(&mut buf)?;
-
-        let blob_hashes_len = u64::from_reader(&mut buf)? as usize;
-
-        if buf.len() < blob_hashes_len * 32 {
-            return Err(BytesError::InvalidData);
-        }
-
-        let mut blob_hashes = Vec::with_capacity(blob_hashes_len);
-        for _ in 0..blob_hashes_len {
-            let hash = crate::read_arr::<32>(&mut buf)?;
-            blob_hashes.push(hash);
-        }
-
         Ok(Self {
             chain_id,
             sender,
@@ -535,8 +502,6 @@ impl Payload {
             fee,
             nonce,
             data,
-            blob_fee_cap,
-            blob_hashes,
         })
     }
 
@@ -561,6 +526,7 @@ impl Payload {
         }
         bytes.extend(self.nonce.to_bytes());
 
+        #[allow(clippy::match_same_arms)]
         match &self.data {
             Some(TransactionData::Deploy(d)) => {
                 bytes.extend(&d.bytecode.to_hash_input_bytes());
@@ -577,15 +543,12 @@ impl Payload {
             Some(TransactionData::Memo(m)) => {
                 bytes.extend(m);
             }
+
+            Some(TransactionData::Blob(_)) => {
+                // Exclude blobs from the signature, since the contract doesn't
+                // validate the blob
+            }
             None => {}
-        }
-
-        bytes.extend(self.blob_fee_cap.to_bytes());
-
-        bytes.extend((self.blob_hashes.len() as u64).to_bytes());
-
-        for h in &self.blob_hashes {
-            bytes.extend(h);
         }
 
         bytes
@@ -602,11 +565,4 @@ pub struct Fee {
     pub gas_price: u64,
     /// Address to which to refund the unspent gas.
     pub refund_address: AccountPublicKey,
-}
-
-#[derive(Debug, Clone)]
-pub struct BlobSidecar {
-    pub blobs: Vec<Vec<u8>>,
-    pub commitments: Vec<[u8; 48]>,
-    pub proofs: Vec<[u8; 48]>,
 }

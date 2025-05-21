@@ -75,7 +75,7 @@ impl<'a, DB: database::DB> Validator<'a, DB> {
     ///   - the number of Previous Non-Attested Iterations (PNI)
     ///   - previous block voters
     ///   - current block voters (if not `disable_winner_att_check`)
-    pub async fn execute_checks(
+    pub async fn execute_checks( // @TODO: перевірка основних полів заголовка блоку
         &self,
         header: &ledger::Header,
         expected_generator: &PublicKeyBytes,
@@ -145,7 +145,7 @@ impl<'a, DB: database::DB> Validator<'a, DB> {
     }
 
     /// Verifies any non-attestation field
-    async fn verify_basic_fields(
+    async fn verify_basic_fields( // @TODO: комплексна перевірка блоку
         &self,
         candidate_block: &'a ledger::Header,
         generator: &MultisigPublicKey,

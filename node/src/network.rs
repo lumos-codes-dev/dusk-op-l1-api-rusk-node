@@ -155,7 +155,7 @@ impl<const N: usize> Kadcast<N> {
         })
     }
 
-    pub fn route_internal(&self, msg: Message) {
+    pub fn route_internal(&self, msg: Message) { // @TODO: роутін транзакції у вузлі
         let topic = msg.topic() as usize;
         let routes = self.routes.clone();
 

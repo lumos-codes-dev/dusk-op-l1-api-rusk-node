@@ -48,7 +48,7 @@ impl<T: Operations> Generator<T> {
         Ok(candidate_msg.into())
     }
 
-    pub async fn generate_block(
+    pub async fn generate_block( // @TODO: генерація блоку
         &self,
         ru: &RoundUpdate,
         iteration: u8,
@@ -136,7 +136,7 @@ impl<T: Operations> Generator<T> {
             get_current_timestamp(),
         );
 
-        match Block::new(blk_header, txs, faults.to_vec()) {
+        match Block::new(blk_header, txs, faults.to_vec()) { // @TODO: створення блоку
             Ok(blk) => {
                 info!(
                     event = "Block generated",

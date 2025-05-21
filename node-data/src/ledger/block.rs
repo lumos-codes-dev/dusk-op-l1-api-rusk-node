@@ -26,7 +26,7 @@ impl Eq for Block {}
 
 impl Block {
     /// Creates a new block and calculates block hash, if missing.
-    pub fn new(
+    pub fn new( // @TODO: створення блоку
         header: Header,
         txs: Vec<Transaction>,
         faults: Vec<Fault>,
