@@ -578,7 +578,7 @@ impl TransferState {
         }
 
         // check the signature is valid and made by `sender`
-        if !abi::verify_bls(
+        if !abi::verify_bls( //@TODO: верифікація транзакції
             moonlight_tx.signature_message(),
             *moonlight_tx.sender(),
             *moonlight_tx.signature(),

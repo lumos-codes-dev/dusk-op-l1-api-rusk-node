@@ -44,7 +44,7 @@ pub mod phoenix;
 pub mod withdraw;
 
 /// ID of the genesis transfer contract
-pub const TRANSFER_CONTRACT: ContractId = crate::reserved(0x1);
+pub const TRANSFER_CONTRACT: ContractId = crate::reserved(0x1); // @TODO: тут фіксується ID системного контракту
 
 /// Panic of "Nonce not ready to be used yet"
 pub const PANIC_NONCE_NOT_READY: &str = "Nonce not ready to be used yet";
@@ -78,9 +78,16 @@ pub enum Transaction {
     /// A phoenix transaction.
     Phoenix(PhoenixTransaction),
     /// A moonlight transaction.
-    Moonlight(MoonlightTransaction),
-    /// A blob transaction.
-    Blob(BlobTransaction),
+    Moonlight(MoonlightTransaction, Option<BlobSidecar>),
+    // /// A blob transaction.
+    // Blob(BlobTransaction),
+}
+
+#[derive(Debug, Clone)]
+pub struct BlobSidecar {
+    pub blobs: Vec<Vec<u8>>,
+    pub commitments: Vec<[u8; 48]>,
+    pub proofs: Vec<[u8; 48]>,
 }
 
 impl Transaction {
@@ -354,7 +361,6 @@ impl Transaction {
         match self {
             Self::Phoenix(tx) => tx.call(),
             Self::Moonlight(tx) => tx.call(),
-            Self::Blob(tx) => tx.call(),
         }
     }
 

@@ -143,6 +143,15 @@ pub trait ConsensusStorage {
     fn count_validation_results(&self) -> usize;
 }
 
+pub trait Blobpool {
+    fn store_blob(&mut self, hash: [u8; 32], blob: &BlobData, timestamp: u64) -> Result<()>;
+    fn get_blob(&self, hash: [u8; 32]) -> Result<Option<BlobData>>;
+    fn blob_exists(&self, hash: [u8; 32]) -> Result<bool>;
+    fn delete_blob(&mut self, hash: [u8; 32]) -> Result<()>;
+    fn expired_blobs(&self, timestamp: u64) -> Result<Vec<[u8; 32]>>;
+    fn blobs_count(&self) -> usize;
+}
+
 pub trait Mempool {
     /// Adds a transaction to the mempool with a timestamp.
     fn store_mempool_tx(

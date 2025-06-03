@@ -80,7 +80,7 @@ pub fn execute(
         .call::<_, Result<Vec<u8>, ContractError>>(
             TRANSFER_CONTRACT,
             "spend_and_execute",
-            tx.strip_off_bytecode().as_ref().unwrap_or(tx),
+            tx.strip_off_bytecode().as_ref().unwrap_or(tx), // @TODO: тут ініціалізується стріп байткоду
             tx.gas_limit(),
         )
         .map_err(|e| {

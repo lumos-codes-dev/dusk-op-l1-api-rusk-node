@@ -146,7 +146,7 @@ fn generate_stake_state(
     Ok(())
 }
 
-fn generate_empty_state<P: AsRef<Path>>(
+fn generate_empty_state<P: AsRef<Path>>( // @TODO: генерація порожнього стану
     state_dir: P,
     snapshot: &Snapshot,
     dusk_key: AccountPublicKey,

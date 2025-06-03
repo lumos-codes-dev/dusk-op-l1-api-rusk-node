@@ -41,7 +41,7 @@ pub enum TransactionData {
     /// call.
     Memo(Vec<u8>),
     /// Data for blob storage together with contract call.
-    Blob(ContractCall, Vec<BlobData>),
+    Blob(ContractCall, ContractDeploy, Vec<BlobData>),
 }
 
 impl From<ContractCall> for TransactionData {

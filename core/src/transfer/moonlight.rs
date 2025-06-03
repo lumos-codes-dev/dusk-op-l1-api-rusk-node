@@ -255,7 +255,7 @@ impl Transaction {
     /// deployment, clones all fields except for the bytecode 'bytes' part.
     /// Returns none if the transaction is not a deployment transaction.
     #[must_use]
-    pub fn strip_off_bytecode(&self) -> Option<Self> {
+    pub fn strip_off_bytecode(&self) -> Option<Self> { // @TODO: тут стріпається байткод
         let deploy = self.deploy()?;
 
         let stripped_deploy = TransactionData::Deploy(ContractDeploy {
@@ -328,7 +328,7 @@ impl Transaction {
     /// Return the message that is meant to be signed over to make the
     /// transaction a valid one.
     #[must_use]
-    pub fn signature_message(&self) -> Vec<u8> {
+    pub fn signature_message(&self) -> Vec<u8> { // @TODO: верифікація транзакції
         self.payload.signature_message()
     }
 
@@ -515,7 +515,7 @@ impl Payload {
 
         match &self.data {
             Some(TransactionData::Deploy(d)) => {
-                bytes.extend(&d.bytecode.to_hash_input_bytes());
+                bytes.extend(&d.bytecode.to_hash_input_bytes()); // @TODO: тут
                 bytes.extend(&d.owner);
                 if let Some(init_args) = &d.init_args {
                     bytes.extend(init_args);

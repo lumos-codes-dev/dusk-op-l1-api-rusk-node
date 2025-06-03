@@ -60,6 +60,7 @@ pub struct MempoolSrv {
     conf: Params,
     /// Sender channel for sending out RUES events
     event_sender: Sender<Event>,
+    pub blobpool: Arc<BlobPool>,
 }
 
 impl MempoolSrv {
@@ -72,6 +73,7 @@ impl MempoolSrv {
             ),
             conf,
             event_sender,
+            blobpool: Arc::new(BlobPool::new()),
         }
     }
 }
@@ -342,7 +344,7 @@ impl MempoolSrv {
     /// Requests full mempool data from N alive peers
     ///
     /// Message flow:
-    /// GetMempool -> Inv -> GetResource -> Tx // @TODO: тут 
+    /// GetMempool -> Inv -> GetResource -> Tx // @TODO: тут
     async fn request_mempool<N: Network>(&self, network: &Arc<RwLock<N>>) {
         const WAIT_TIMEOUT: Duration = Duration::from_secs(5);
         let max_peers = self
@@ -357,5 +359,12 @@ impl MempoolSrv {
         if let Err(err) = net.send_to_alive_peers(msg, max_peers).await {
             error!("could not request mempool from network: {err}");
         }
+    }
+
+    pub async fn get_blob_data(
+        &self,
+        hash: &[u8; 32],
+    ) -> Option<Arc<BlobData>> {
+        self.blobpool.get(hash).await
     }
 }

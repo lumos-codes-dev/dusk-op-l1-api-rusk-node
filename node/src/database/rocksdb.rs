@@ -43,6 +43,8 @@ const CF_MEMPOOL_SPENDING_ID: &str = "cf_mempool_spending_id";
 const CF_MEMPOOL_FEES: &str = "cf_mempool_fees";
 const CF_METADATA: &str = "cf_metadata";
 
+const CF_BLOBPOOL: &str = "cf_blobpool";
+
 const DB_FOLDER_NAME: &str = "chain.db";
 
 // List of supported metadata keys
@@ -298,6 +300,47 @@ pub struct DBTransaction<'db, DB: DBAccess> {
     fees_cf: &'db ColumnFamily,
 
     metadata_cf: &'db ColumnFamily,
+
+    /// Blobpool column family
+    blobpool_cf: &'db ColumnFamily,
+}
+
+impl<'db, DB: DBAccess> Blobpool for DBTransaction<'db, DB> {
+    fn store_blob(&mut self, hash: [u8; 32], blob: &BlobData, timestamp: u64) -> Result<()> {
+        let mut blob_data = vec![];
+        blob.write(&mut blob_data)?;
+        self.put_cf(self.blobpool_cf, hash, blob_data)?;
+        // Можна додати індекс для TTL, аналогічно до mempool
+        Ok(())
+    }
+
+    fn get_blob(&self, hash: [u8; 32]) -> Result<Option<BlobData>> {
+        let data = self.inner.get_cf(self.blobpool_cf, hash)?;
+        match data {
+            None => Ok(None),
+            Some(blob) => Ok(Some(BlobData::read(&mut &blob.to_vec()[..])?)),
+        }
+    }
+
+    fn blob_exists(&self, hash: [u8; 32]) -> Result<bool> {
+        Ok(self.inner.get_cf(self.blobpool_cf, hash)?.is_some())
+    }
+
+    fn delete_blob(&mut self, hash: [u8; 32]) -> Result<()> {
+        self.inner.delete_cf(self.blobpool_cf, hash)?;
+        Ok(())
+    }
+
+    fn expired_blobs(&self, timestamp: u64) -> Result<Vec<[u8; 32]>> {
+        // Аналогічно до mempool_expired_txs, якщо зберігати timestamp
+        Ok(vec![]) // реалізуйте за потреби
+    }
+
+    fn blobs_count(&self) -> usize {
+        self.inner
+            .iterator_cf(self.blobpool_cf, IteratorMode::Start)
+            .count()
+    }
 }
 
 impl<'db, DB: DBAccess> Ledger for DBTransaction<'db, DB> {

@@ -255,7 +255,7 @@ impl RuskNodeBuilder {
             return chain_srv.revert_last_final().await;
         }
 
-        let mut service_list: Vec<Box<Services>> = vec![
+        let mut service_list: Vec<Box<Services>> = vec![ // @TODO: список сервісів
             Box::new(MempoolSrv::new(self.mempool, node_sender.clone())),
             Box::new(chain_srv),
             Box::new(DataBrokerSrv::new(self.databroker)),

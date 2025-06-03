@@ -604,9 +604,3 @@ pub struct Fee {
     pub refund_address: AccountPublicKey,
 }
 
-#[derive(Debug, Clone)]
-pub struct BlobSidecar {
-    pub blobs: Vec<Vec<u8>>,
-    pub commitments: Vec<[u8; 48]>,
-    pub proofs: Vec<[u8; 48]>,
-}
